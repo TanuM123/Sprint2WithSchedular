@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<os:object-store name="state_store" doc:name="Object store" doc:id="9c976325-2008-40ad-a76a-7730e7c855e2" />
+	<os:object-store name="key1_store" doc:name="Object store" doc:id="9fef4b0a-d3b4-4637-8569-883625ee65a2" />
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="095a49bd-6b7d-46fc-9d38-1ae24d069b04" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Tanu12345@" database="company" />
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="cdf3babe-64d4-4ee2-a953-b83edce4f69c" >
+		<salesforce:basic-connection username="ayushi09malviya@gmail.com" password="Tanu1234@" securityToken="QFzzbcWCawxxMkXa9QGgrVttR" />
+	</salesforce:sfdc-config>
+	<os:object-store name="key2_store" doc:name="Object store" doc:id="e466c2c2-720f-440d-bb6d-5c9d220cb241" />
+	<flow name="demoprojectFlow" doc:id="6c90b454-f6a9-4df5-bcb2-cd6265480eab" >
+		<scheduler doc:name="Scheduler" doc:id="f4ec322c-1c02-41a0-a2e1-f2e4dd6f8b6d" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="20" timeUnit="SECONDS"/>
+			</scheduling-strategy>
+		</scheduler>
+		<os:retrieve doc:name="Retrieve" doc:id="2fecae4e-cffd-47a1-8961-50b80499bfea" key="option" target="option" objectStore="state_store">
+			<os:default-value ><![CDATA[fromSalesforceToDb]]></os:default-value>
+		</os:retrieve>
+		<logger level="INFO" doc:name="Logger" doc:id="ab241cbe-1a8f-4a67-b3a9-8980e634de73" message="#[vars.option]" />
+		<choice doc:name="Choice" doc:id="025bb410-a48d-4027-b742-dead31124f40" >
+			<when expression="#[vars.option=='fromDbToSalesforce']">
+				<logger level="INFO" doc:name="Logger" doc:id="975ae72f-662e-4e2d-869d-41c98859ff89" message="in db to salesforce block"/>
+				<os:retrieve doc:name="Retrieve" doc:id="ca3935f8-a2dd-432f-b432-6e2d5c891b92" key="time_modified" objectStore="key1_store" target="time_modified" >
+					<os:default-value ><![CDATA[2021-03-08T011:23:20.000Z
+
+]]></os:default-value>
+				</os:retrieve>
+				<os:retrieve doc:name="Retrieve" doc:id="fe9726b8-6d15-4970-9f69-87cc2be6c3e6" key="max_i" target="max_i" objectStore="key2_store">
+					<os:default-value ><![CDATA[#[100]]]></os:default-value>
+				</os:retrieve>
+				<logger level="INFO" doc:name="Logger" doc:id="871823b2-03bc-4975-ab1c-47223ed23d1c" message="#[vars.max_i]" />
+				<db:select doc:name="Select" doc:id="b80f41a3-915f-438c-ab6b-2e5f532cf880" config-ref="Database_Config">
+					<db:sql ><![CDATA[select Contact_id,Contact_name,Contact_salary,lastmodified,Contact_phone,Billing_City,Billing_State,Shipping_City,Shipping_Country,Shipping_State from contact_mule where lastmodified>:mydata and Contact_id>:i]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	"mydata":vars.time_modified,
+	"i":vars.max_i
+}]]]></db:input-parameters>
+				</db:select>
+				<choice doc:name="Choice" doc:id="5faedeaf-1eda-4bbc-a22f-f1afe7566136" >
+					<when expression="#[not isEmpty(payload)]">
+						<os:store doc:name="Store" doc:id="d1f68d75-32f8-42f9-9cc6-201f8262b173" key="time_modified" objectStore="key1_store">
+			<os:value><![CDATA[#[max(payload map $.lastmodified)]]]></os:value>
+		</os:store>
+						<os:store doc:name="Store" doc:id="c141c791-436e-4ec4-a391-06524f6bcc79" key="max_i" objectStore="key2_store">
+							<os:value ><![CDATA[#[max(payload map $.Contact_id)]]]></os:value>
+						</os:store>
+						<logger level="INFO" doc:name="Logger" doc:id="4d182d7b-4916-43aa-a2d2-891171bcc118" message="#[vars.time_modified]"/>
+						<flow-ref doc:name="Flow Reference" doc:id="39876216-a778-4359-9153-f201c7a9697e" name="batchFlow2"/>
+						<ee:transform doc:name="Transform Message" doc:id="87dd301a-4711-41b0-8e0a-59e3414dbbe8" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"msg":"data added to salesforce",
+	"status":payload.successful
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="e90610a3-35fb-402c-9b3d-4375c9e35193" message="data added to salesforce"/>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Transform Message" doc:id="86abff89-9606-4ef4-8bbd-62a4768d8e42" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"msg":"no new data found",
+	"status":payload.successful
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="56484ba7-4aae-4e47-aaf3-616a996fe7b7" message="no new data found in database"/>
+					</otherwise>
+				</choice>
+				<os:store doc:name="Store" doc:id="f4291fae-29d6-4f8a-9149-92f5bb931b09" key="option" objectStore="state_store">
+					<os:value><![CDATA[#['fromSalesforceToDb']]]></os:value>
+				</os:store>
+			</when>
+			<when expression="#[vars.option=='fromSalesforceToDb']">
+				<logger level="INFO" doc:name="Logger" doc:id="78137f33-19cb-488e-ad06-b396d55af012" message="in salesforce to db block"/>
+				<os:retrieve doc:name="Retrieve" doc:id="7a80c39e-77e3-4965-8546-30ccb9c1ba50" key="time_update" objectStore="key1_store" target="time_update">
+					<os:default-value ><![CDATA[2021-03-08T18:13:24.000Z]]></os:default-value>
+				</os:retrieve>
+				<os:retrieve doc:name="Retrieve" doc:id="4878271a-82b2-48b0-a8dd-333a74b31cfa" key="max_i" objectStore="key2_store" target="max_i">
+					<os:default-value ><![CDATA[100]]></os:default-value>
+				</os:retrieve>
+				<logger level="INFO" doc:name="Logger" doc:id="3583561c-59f1-4013-95a3-5dad43a27004" message="#[vars.max_i]" />
+				<salesforce:query doc:name="Query" doc:id="a67d4c3e-2462-4a56-a51c-1ad60dc3b2c5" config-ref="Salesforce_Config">
+					<salesforce:salesforce-query ><![CDATA[SELECT AccountNumber,Name,Phone,AnnualRevenue,LastModifiedDate,BillingCity,BillingState,BillingCountry,ShippingCity,ShippingState,ShippingCountry
+FROM Account WHERE LastModifiedDate >:mydata and AccountNumber>':i']]></salesforce:salesforce-query>
+					<salesforce:parameters ><![CDATA[#[{
+	"mydata":vars.time_update,
+	"i":vars.max_i
+}]]]></salesforce:parameters>
+				</salesforce:query>
+				<choice doc:name="Choice" doc:id="644cb567-78d7-4c1c-b14e-46b7127ae7d7" >
+					<when expression="#[not isEmpty(payload)]">
+						<os:store doc:name="Store" doc:id="cca8315f-6436-4d2d-8d07-36926215e798" key="time_update" objectStore="key1_store">
+							<os:value ><![CDATA[#[max(payload map $.LastModifiedDate)]]]></os:value>
+						</os:store>
+						<os:store doc:name="Store" doc:id="07f590cf-03e1-4d74-a17f-ef03d07a1e89" key="max_i" objectStore="key2_store">
+							<os:value ><![CDATA[#[max(payload map $.AccountNumber)]]]></os:value>
+						</os:store>
+						<logger level="INFO" doc:name="Logger" doc:id="401a8ea7-bae5-4424-88be-1c6f07faf171" message="#[vars.time_update]"/>
+						<flow-ref doc:name="Flow Reference" doc:id="8d7953bc-ddc5-488d-a3eb-e931cdb69f79" name="batchFlow"/>
+						<ee:transform doc:name="Transform Message" doc:id="64779571-a0ab-4420-923f-5dcfac4f3cc9" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"msg":"data added to database"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="0d4407af-ffa1-4897-956c-46ca606572f2" message="data added to database" />
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Transform Message" doc:id="8b27616e-461f-4c15-9915-9673a96a940d" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"msg":"no new data found",
+	"status":payload.successful
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="8560e7c5-4931-44b3-b78d-c49f74f11aa4" message="no new data found in salesforce"/>
+					</otherwise>
+				</choice>
+				<os:store doc:name="Store" doc:id="ce8114f4-8b8e-486b-98a0-241da829a017" key="option" objectStore="state_store">
+					<os:value ><![CDATA[#['fromDbToSalesforce']]]></os:value>
+				</os:store>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="36eef00a-9c68-45cd-bbe8-d724707bb7b9" message="default block"/>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

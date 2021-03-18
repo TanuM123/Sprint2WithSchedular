@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<flow name="batchFlow" doc:id="7e03c9be-b958-4a98-9150-a680917ebae6" >
+		<batch:job jobName="Copy_of_bidirectiondummyBatch_Job" doc:id="25b590fb-03d5-459f-9b27-215d306efe5b" blockSize="5" >
+			<batch:process-records >
+				<batch:step name="Copy_of_Batch_Step" doc:id="c35bfdff-8454-4b60-a402-3cbc41544087" acceptPolicy="ALL" >
+					<ee:transform doc:name="Copy_of_Transform Message" doc:id="cc972c5d-dfa3-4bde-acea-d9bc69aeae47">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "Contact_id":payload.AccountNumber as Number,
+    "Contact_name":payload.Name,
+    "Contact_salary":payload.AnnualRevenue as Number,
+    "Contact_phone":payload.Phone,
+    "Billing_City":payload.BillingCity,
+    "Billing_State":payload.BillingState,
+    "Shipping_City":payload.ShippingCity,
+    "Shipping_Country":payload.ShippingCountry,
+    "Shipping_State":payload.ShippingState,
+    "lastmodified":payload.LastModifiedDate
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					<logger level="INFO" doc:name="Copy_of_Logger" doc:id="962a33b1-0148-4519-bc27-05edde01bfc4" message="Entering Batch Processing" />
+					<db:insert doc:name="Copy_of_Insert" doc:id="0daf556b-e6a1-43ed-90d1-837d3eb63b5a" config-ref="Database_Config" >
+						<db:sql ><![CDATA[insert into contact_mule(Contact_id,Contact_name,Contact_salary,Contact_phone,Billing_City,Billing_State,Shipping_City,Shipping_Country,Shipping_State) values(:id,:name,:price,:phone,:city,:state,:scity,:scountry,:sstate)
+]]></db:sql>
+						<db:input-parameters ><![CDATA[#[{
+    "id":payload.Contact_id,
+    "name":payload.Contact_name,
+    "price":payload.Contact_salary,
+    "phone":payload.Contact_phone,
+    "city":payload.Billing_City,
+    "state":payload.Billing_State,
+    "scity":payload.Shipping_City,
+    "scountry":payload.Shipping_Country,
+    "sstate":payload.Shipping_State
+}]]]></db:input-parameters>
+					</db:insert>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Copy_of_Logger" doc:id="0abcd1b7-d088-4f3f-b405-99a79dc4a431" message="Bulk Insert Complete....." />
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+	<flow name="batchFlow2" doc:id="48eaa83c-dc3e-489a-af25-a4c24e1c0c04" >
+		<batch:job jobName="businessLogicBatch_Job" doc:id="81b185e0-b7fd-4f6f-aea1-cc29c8387dee" >
+			<batch:process-records >
+				<batch:step name="Batch_Step1" doc:id="b744bbd4-dcfa-4451-b97b-388317992e58" >
+					<ee:transform doc:name="Transform Message" doc:id="0d94e9a9-685b-47a5-9bce-bdaf24bbdd01">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	Name: payload.Contact_name,
+	BillingCity: payload.Billing_City,
+	BillingState: payload.Billing_State,
+	ShippingCity: payload.Shipping_City,
+	ShippingState: payload.Shipping_State,
+	ShippingCountry: payload.Shipping_Country,
+	Phone: payload.Contact_phone,
+	AccountNumber: payload.Contact_id as String,
+	AnnualRevenue: payload.Contact_salary as String
+}]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+					<logger level="INFO" doc:name="Logger" doc:id="d899ed46-973e-408e-82ce-0247c4a66cbf" message="Entering Batch Processing"/>
+					<salesforce:create doc:name="Create" doc:id="d9ae34b8-c6c1-43ef-b749-da19b988e113" config-ref="Salesforce_Config" type="Account"/>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="8bbb0645-a450-479a-800f-ba87c1b1ef02" message=" Create Complete...."/>
+			</batch:on-complete>
+		</batch:job>
+	</flow>
+</mule>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="new-test-suite1.xml" />
+	<munit:test name="optioncheckingfromdbtosalesforce" doc:id="88f6f34b-77a5-4359-9383-b009da75b3d0" >
+		<munit:behavior >
+			<set-payload value='#[{
+	"option":"fromDbToSalesforce"
+}]' doc:name="Set Payload" doc:id="82ebd4bb-1b93-48c2-b0ba-67e809bf0732" />
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to demoprojectFlow" doc:id="f4f80d4e-bd36-46e0-8ca0-bb31d7bc18a2" name="demoprojectFlow" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that" doc:id="72deac46-bd97-445b-b3c3-96eb2740ef28" message="failed check once" is="#[MunitTools::containsString('fromSalesforceToDb')]" expression="#[vars.option]" />
+		</munit:validation>
+	</munit:test>
+
+
+</mule>
